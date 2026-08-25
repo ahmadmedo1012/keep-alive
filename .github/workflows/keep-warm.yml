@@ -1,0 +1,37 @@
+name: Keep-warm pings
+
+# Pings the free-tier Render services every 10 minutes so they never hit
+# Render's 15-minute idle spin-down (which would drop the WhatsApp pairing
+# on openwa-gateway and cause cold starts on subnation.ly).
+#
+# Lives in its own PUBLIC repo: Actions minutes are unlimited on public
+# repositories, and nothing sensitive is here — both URLs are public
+# health endpoints by design.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping SubNation web
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 \
+            https://subnation.ly/api/healthz || echo "000")
+          echo "subnation.ly/api/healthz -> $code"
+
+      - name: Ping openwa gateway
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 \
+            https://openwa-gateway-7aaa.onrender.com/healthz || echo "000")
+          echo "gateway /healthz -> $code"
